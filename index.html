@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro PassVault</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --neon-green: #39ff14;
+            --neon-green-dim: rgba(57, 255, 20, 0.2);
+            --bg-color: #050505;
+        }
+
+        body {
+            font-family: 'VT323', monospace;
+            background-color: var(--bg-color);
+            color: var(--neon-green);
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* CRT Scanline Effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* CRT Flicker Animation */
+        @keyframes flicker {
+            0% { opacity: 0.95; }
+            5% { opacity: 0.85; }
+            10% { opacity: 0.95; }
+            15% { opacity: 1; }
+            100% { opacity: 1; }
+        }
+
+        .crt-content {
+            animation: flicker 0.15s infinite;
+            text-shadow: 0 0 5px var(--neon-green), 0 0 10px var(--neon-green-dim);
+        }
+
+        /* Retro UI Elements */
+        .retro-border {
+            border: 2px solid var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green-dim), inset 0 0 10px var(--neon-green-dim);
+            background: rgba(0, 20, 0, 0.7);
+        }
+
+        .retro-btn {
+            border: 2px solid var(--neon-green);
+            background: transparent;
+            color: var(--neon-green);
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .retro-btn:hover {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+
+        .retro-input {
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            outline: none;
+        }
+        
+        .retro-input:focus {
+            box-shadow: 0 0 8px var(--neon-green);
+        }
+
+        /* Custom Checkbox */
+        input[type="checkbox"] {
+            appearance: none;
+            background-color: transparent;
+            margin: 0;
+            font: inherit;
+            color: currentColor;
+            width: 1.15em;
+            height: 1.15em;
+            border: 2px solid var(--neon-green);
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+        }
+        input[type="checkbox"]::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em var(--neon-green);
+            background-color: var(--neon-green);
+        }
+        input[type="checkbox"]:checked::before {
+            transform: scale(1);
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 15px;
+            background: var(--neon-green);
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: var(--neon-green-dim);
+            border: 1px solid var(--neon-green);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000;
+            border-left: 1px solid var(--neon-green);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--neon-green);
+        }
+
+        /* Hide elements */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+    
+    <div class="scanlines"></div>
+    
+    <div class="crt-content w-full max-w-3xl z-10 relative flex flex-col gap-6">
+        
+        <!-- Header -->
+        <header class="text-center mb-4">
+            <h1 class="text-5xl md:text-6xl font-bold tracking-widest mb-2">SYS_VAULT v1.0</h1>
+            <p class="text-xl opacity-80">SECURE PASSWORD GENERATOR & MANAGER</p>
+            <div class="h-0.5 w-full bg-[#39ff14] mt-4 opacity-50 shadow-[0_0_10px_#39ff14]"></div>
+        </header>
+
+        <!-- Generator Section -->
+        <section class="retro-border p-6 rounded-sm">
+            <h2 class="text-2xl mb-4 border-b border-[#39ff14] inline-block pr-8">> GENERATOR_</h2>
+            
+            <!-- Password Display -->
+            <div class="flex items-center justify-between bg-black border border-[#39ff14] p-4 mb-6">
+                <div id="passwordDisplay" class="text-3xl md:text-4xl break-all tracking-wider font-bold h-12 flex items-center">
+                    <!-- Generated password appears here -->
+                </div>
+                <button onclick="copyGeneratedPassword()" class="retro-btn px-4 py-2 ml-4 text-xl flex-shrink-0" title="Copy">
+                    [ COPY ]
+                </button>
+            </div>
+
+            <!-- Controls -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                <!-- Length Control -->
+                <div>
+                    <div class="flex justify-between text-xl mb-2">
+                        <span>LENGTH:</span>
+                        <span id="lengthValue">16</span>
+                    </div>
+                    <input type="range" id="lengthSlider" min="8" max="32" value="16" class="w-full">
+                </div>
+                
+                <!-- Options -->
+                <div class="grid grid-cols-2 gap-4 text-xl">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="chkUpper" checked>
+                        <span>A-Z</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="chkLower" checked>
+                        <span>a-z</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="chkNumbers" checked>
+                        <span>0-9</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="chkSymbols" checked>
+                        <span>!@#$</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button onclick="generatePassword()" class="retro-btn flex-1 py-3 text-2xl font-bold">
+                    > EXECUTE_GENERATE
+                </button>
+                <button onclick="openSaveModal()" class="retro-btn flex-1 py-3 text-2xl font-bold">
+                    > SAVE_TO_VAULT
+                </button>
+            </div>
+        </section>
+
+        <!-- Vault Section -->
+        <section class="retro-border p-6 rounded-sm">
+            <h2 class="text-2xl mb-4 border-b border-[#39ff14] inline-block pr-8">> DATA_VAULT_</h2>
+            
+            <div id="emptyVaultMsg" class="text-xl text-center py-8 opacity-70">
+                NO DATA FOUND IN LOCAL STORAGE.
+            </div>
+
+            <div id="vaultList" class="flex flex-col gap-4 hidden">
+                <!-- Vault items will be injected here via JS -->
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Save Modal -->
+    <div id="saveModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="retro-border p-6 max-w-md w-full bg-black relative crt-content">
+            <h3 class="text-3xl mb-6">> ENTER_TARGET_ID_</h3>
+            <p class="text-lg mb-2">Web Application / System Name:</p>
+            <input type="text" id="targetNameInput" class="retro-input w-full p-3 text-2xl mb-6 font-bold" placeholder="e.g. FACEBOOK, GITHUB" autocomplete="off" onkeypress="handleEnter(event)">
+            
+            <div class="flex gap-4">
+                <button onclick="savePassword()" class="retro-btn flex-1 py-2 text-xl">> CONFIRM</button>
+                <button onclick="closeSaveModal()" class="retro-btn flex-1 py-2 text-xl text-red-500 !border-red-500 hover:!bg-red-500 hover:!text-black hover:shadow-[0_0_15px_red]">> ABORT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-8 left-1/2 transform -translate-x-1/2 retro-border bg-black text-[#39ff14] px-8 py-4 text-2xl z-50 transition-all duration-300 opacity-0 translate-y-[-20px] pointer-events-none crt-content">
+        [ SYSTEM_MSG: ACTION COMPLETED ]
+    </div>
+
+    <script>
+        // State
+        let currentPassword = '';
+        let savedPasswords = [];
+
+        // DOM Elements
+        const passwordDisplay = document.getElementById('passwordDisplay');
+        const lengthSlider = document.getElementById('lengthSlider');
+        const lengthValue = document.getElementById('lengthValue');
+        
+        const chkUpper = document.getElementById('chkUpper');
+        const chkLower = document.getElementById('chkLower');
+        const chkNumbers = document.getElementById('chkNumbers');
+        const chkSymbols = document.getElementById('chkSymbols');
+        
+        const vaultList = document.getElementById('vaultList');
+        const emptyVaultMsg = document.getElementById('emptyVaultMsg');
+        
+        const saveModal = document.getElementById('saveModal');
+        const targetNameInput = document.getElementById('targetNameInput');
+        const toast = document.getElementById('toast');
+
+        // Character Sets
+        const CHARS = {
+            upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+            lower: 'abcdefghijklmnopqrstuvwxyz',
+            numbers: '0123456789',
+            symbols: '!@#$%^&*()_+~|}{[]:;?><,./-='
+        };
+
+        // Initialize
+        window.onload = () => {
+            generatePassword();
+            // Optional: Load from sessionStorage if we want to keep it across reloads in the same tab, 
+            // but keeping it strictly memory array per requirements to keep it simple.
+        };
+
+        // Event Listeners
+        lengthSlider.addEventListener('input', (e) => {
+            lengthValue.textContent = e.target.value;
+            generatePassword();
+        });
+
+        const checkboxes = [chkUpper, chkLower, chkNumbers, chkSymbols];
+        checkboxes.forEach(chk => {
+            chk.addEventListener('change', () => {
+                // Prevent unchecking all
+                if (!chkUpper.checked && !chkLower.checked && !chkNumbers.checked && !chkSymbols.checked) {
+                    chk.checked = true;
+                    showToast("ERROR: AT LEAST ONE TYPE REQUIRED");
+                    return;
+                }
+                generatePassword();
+            });
+        });
+
+        // Core Functions
+        function generatePassword() {
+            let charset = '';
+            if (chkUpper.checked) charset += CHARS.upper;
+            if (chkLower.checked) charset += CHARS.lower;
+            if (chkNumbers.checked) charset += CHARS.numbers;
+            if (chkSymbols.checked) charset += CHARS.symbols;
+
+            let length = parseInt(lengthSlider.value);
+            let password = '';
+            
+            // Ensure at least one character from each selected pool
+            let guaranteedChars = [];
+            if (chkUpper.checked) guaranteedChars.push(CHARS.upper[Math.floor(Math.random() * CHARS.upper.length)]);
+            if (chkLower.checked) guaranteedChars.push(CHARS.lower[Math.floor(Math.random() * CHARS.lower.length)]);
+            if (chkNumbers.checked) guaranteedChars.push(CHARS.numbers[Math.floor(Math.random() * CHARS.numbers.length)]);
+            if (chkSymbols.checked) guaranteedChars.push(CHARS.symbols[Math.floor(Math.random() * CHARS.symbols.length)]);
+
+            // Fill the rest randomly
+            for (let i = guaranteedChars.length; i < length; i++) {
+                password += charset[Math.floor(Math.random() * charset.length)];
+            }
+
+            // Combine and shuffle
+            password = (password + guaranteedChars.join('')).split('').sort(() => 0.5 - Math.random()).join('');
+            
+            currentPassword = password;
+            passwordDisplay.textContent = currentPassword;
+        }
+
+        // Copy functionality using older execCommand for maximum compatibility in iframe
+        function copyToClipboard(text) {
+            const el = document.createElement('textarea');
+            el.value = text;
+            el.setAttribute('readonly', '');
+            el.style.position = 'absolute';
+            el.style.left = '-9999px';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            
+            showToast("DATA COPIED TO CLIPBOARD");
+        }
+
+        function copyGeneratedPassword() {
+            copyToClipboard(currentPassword);
+        }
+
+        // Modal Handlers
+        function openSaveModal() {
+            saveModal.classList.remove('hidden');
+            targetNameInput.value = '';
+            targetNameInput.focus();
+        }
+
+        function closeSaveModal() {
+            saveModal.classList.add('hidden');
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') savePassword();
+        }
+
+        // Vault Management
+        function savePassword() {
+            const targetName = targetNameInput.value.trim().toUpperCase();
+            
+            if (!targetName) {
+                showToast("ERROR: TARGET ID REQUIRED");
+                return;
+            }
+
+            const entry = {
+                id: Date.now().toString(),
+                target: targetName,
+                password: currentPassword,
+                timestamp: new Date().toLocaleTimeString()
+            };
+
+            savedPasswords.unshift(entry); // Add to beginning
+            renderVault();
+            closeSaveModal();
+            showToast("DATA SAVED TO VAULT");
+            
+            // Generate a new one immediately for security flow
+            generatePassword(); 
+        }
+
+        function deleteEntry(id) {
+            savedPasswords = savedPasswords.filter(item => item.id !== id);
+            renderVault();
+            showToast("ENTRY DELETED");
+        }
+
+        function renderVault() {
+            if (savedPasswords.length === 0) {
+                emptyVaultMsg.classList.remove('hidden');
+                vaultList.classList.add('hidden');
+                return;
+            }
+
+            emptyVaultMsg.classList.add('hidden');
+            vaultList.classList.remove('hidden');
+            
+            vaultList.innerHTML = '';
+            
+            savedPasswords.forEach(entry => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'border border-[#39ff14] bg-[#001000] p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all hover:bg-[#002000]';
+                
+                // Mask password visually
+                const maskedPass = '•'.repeat(8);
+
+                itemDiv.innerHTML = `
+                    <div class="flex-1 overflow-hidden">
+                        <div class="text-[#39ff14] font-bold text-2xl truncate">> ${entry.target}</div>
+                        <div class="text-sm opacity-60 mt-1">LOGGED: ${entry.timestamp}</div>
+                    </div>
+                    <div class="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
+                        <div class="font-mono bg-black px-3 py-2 border border-dashed border-[#39ff14] text-xl tracking-widest hidden sm:block">
+                            ${maskedPass}
+                        </div>
+                        <button onclick="copyToClipboard('${entry.password.replace(/'/g, "\\'")}')" class="retro-btn px-3 py-2 flex-1 md:flex-none">
+                            [ COPY ]
+                        </button>
+                        <button onclick="deleteEntry('${entry.id}')" class="retro-btn px-3 py-2 !text-red-500 !border-red-500 hover:!bg-red-500 hover:!text-black">
+                            [ DEL ]
+                        </button>
+                    </div>
+                `;
+                vaultList.appendChild(itemDiv);
+            });
+        }
+
+        // Toast Notification System
+        let toastTimeout;
+        function showToast(message) {
+            clearTimeout(toastTimeout);
+            toast.textContent = `[ SYSTEM_MSG: ${message} ]`;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 0)';
+            
+            toastTimeout = setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, -20px)';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
